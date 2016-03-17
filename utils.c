@@ -2,83 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/aes.h>
-
 #include "utils.h"
-
-struct dictionary *dictionary_create()
-{
-	struct dictionary *dict = calloc(1, sizeof(struct dictionary));
-	return dict;
-}
-
-struct dictionary_entry *dictionary_search(struct dictionary *dict, char *key)
-{
-	struct dictionary_entry *entry = dict->head;
-	while (entry != NULL) {
-		if (strcmp(key, entry->key) == 0) {
-			break;
-		}
-		entry = entry->next;
-	}
-	return entry;
-}
-
-void dictionary_add(struct dictionary *dict, char *key, char *value)
-{
-	struct dictionary_entry *entry;
-	
-	// replace key value if exists
-	entry = dictionary_search(dict, key);
-	if (entry != NULL) {
-		entry->value = value;
-		return;
-	}
-
-	// else create new entry
-	entry = calloc(1, sizeof(struct dictionary_entry));
-	entry->dict = dict;
-	entry->next = NULL;
-	entry->key = key;
-	entry->value = value;
-
-	if (dict->length == 0) {
-		dict->head = entry;
-	} else {
-		dict->tail->next = entry;
-	}
-	dict->length++;
-	dict->tail = entry;
-}
-
-void dictionary_destroy(struct dictionary *dict)
-{
-	struct dictionary_entry *entry = dict->head, *tmp = dict->head;
-	while (entry != NULL) {
-		tmp = entry->next;
-		free(entry);
-		entry = tmp;
-	}
-	free(dict);
-}
-
-struct dictionary *kv_parse(char *str)
-{
-	struct dictionary *dict = dictionary_create();
-
-	char *delim = "=&";
-	char *token = strtok(str, delim);
-	char *key, *value;
-
-	while (token) {
-		key = token;
-		token = strtok(NULL, delim);
-		value = token;
-		dictionary_add(dict, key, value);
-		token = strtok(NULL, delim);
-	}
-	return dict;
-}
 
 unsigned char hex_to_nibble(char hex)
 {
@@ -260,124 +184,22 @@ void fixed_xor(const unsigned char *a, const unsigned char *b, size_t length, un
 	}
 }
 
-size_t pkcs7_pad(unsigned char *plaintext, size_t length, int block_length)
+int randn(int n)
 {
-	int i;
-	int padding = (length % block_length == 0) ? 16 : block_length - length % block_length;
-
-	for (i = 0; i < padding; ++i) {
-		plaintext[length + i] = padding;
+	if (n < 2) {
+		fprintf(stderr, "Cannot generate a random integer between [0,%d).\n", n);
+		exit(1);
 	}
-	return length + padding;
+	return rand() % n;
 }
 
-size_t pkcs7_unpad(unsigned char *plaintext, size_t length, int block_length)
+int randnn(int l, int h)
 {
-	int padding = plaintext[length - 1];
-
-	int i, invalid = 0;
-	if (length % 16 != 0 || padding < 1 || padding > block_length) {
-		invalid = 1;
+	if (h <= l) {
+		fprintf(stderr, "Cannot generate a random integer between [%d,%d).\n", l, h);
+		exit(1);
 	}
-	for (i = 0; i < padding && !invalid; ++i) {
-		if (plaintext[length - padding + i] != padding) {
-			invalid = 1;
-		}
-	}
-
-	if (invalid) {
-		return 0;
-	}
-
-	for (i = length - padding; i < length; ++i) {
-		plaintext[i] = 0;
-	}
-	return length - padding;
-}
-
-size_t encrypt_AES_ECB(unsigned char *plaintext, unsigned char *ciphertext, size_t length, const unsigned char *key_str)
-{
-	AES_KEY key;
-	AES_set_encrypt_key(key_str, 128, &key);
-
-	size_t new_length = pkcs7_pad(plaintext, length, 16);
-
-	int i;
-	for (i = 0; i < new_length; i += 16) {
-		AES_encrypt(&plaintext[i], &ciphertext[i], &key);
-	}
-	return new_length;
-}
-
-size_t decrypt_AES_ECB(unsigned char *ciphertext, unsigned char *plaintext, size_t length, const unsigned char *key_str)
-{
-	AES_KEY key;
-	AES_set_decrypt_key(key_str, 128, &key);
-
-	int i;
-	for (i = 0; i < length; i += 16) {
-		AES_decrypt(&ciphertext[i], &plaintext[i], &key);
-	}
-
-	return pkcs7_unpad(plaintext, length, 16);
-}
-
-size_t encrypt_AES_CBC(unsigned char *plaintext, unsigned char *ciphertext, size_t length, const unsigned char *key_str, const unsigned char *iv)
-{
-	AES_KEY key;
-	AES_set_encrypt_key(key_str, 128, &key);
-
-	size_t new_length = pkcs7_pad(plaintext, length, 16);
-
-	unsigned char block[16], xor[16];
-	memcpy(xor, iv, 16);
-
-	int i;
-	for (i = 0; i < new_length; i += 16) {
-		fixed_xor(&plaintext[i], xor, 16, block);
-		AES_encrypt(block, &ciphertext[i], &key);
-		memcpy(xor, &ciphertext[i], 16);
-	}
-	return new_length;
-}
-
-size_t decrypt_AES_CBC(unsigned char *ciphertext, unsigned char *plaintext, size_t length, const unsigned char *key_str, const unsigned char *iv)
-{
-	AES_KEY key;
-	AES_set_decrypt_key(key_str, 128, &key);
-
-	unsigned char block[16], xor[16];
-	memcpy(xor, iv, 16);
-
-	int i;
-	for (i = 0; i < length; i += 16) {
-		AES_decrypt(&ciphertext[i], block, &key);
-		fixed_xor(block, xor, 16, &plaintext[i]);
-		memcpy(xor, &ciphertext[i], 16);
-	}
-	return pkcs7_unpad(plaintext, length, 16);
-}
-
-size_t AES_CTR(unsigned char *in, unsigned char *out, size_t length, const unsigned char *key_str, const unsigned char *nonce)
-{
-	AES_KEY key;
-	AES_set_encrypt_key(key_str, 128, &key);
-
-	unsigned char counter[16], keystream[16];
-	memcpy(counter, nonce, 8);
-	memset(counter + 8, '\0', 8);
-	
-	int i;
-	for (i = 0; i < length; i += 16) {
-		AES_encrypt(counter, keystream, &key);
-		if (length - i < 16) {
-			fixed_xor(keystream, in + i, length - i, out + i);
-		} else {
-			fixed_xor(keystream, in + i, 16, out + i);
-		}
-		(*((uint64_t *) (counter + 8)))++; // counter is machine endian
-	}
-	return length;
+	return l + rand() % (h - l);
 }
 
 void fill_random_bytes(unsigned char *buffer, size_t length)
@@ -387,3 +209,78 @@ void fill_random_bytes(unsigned char *buffer, size_t length)
 		buffer[i] = rand() % 256;
 	}
 }
+
+struct dictionary *dictionary_create()
+{
+	struct dictionary *dict = calloc(1, sizeof(struct dictionary));
+	return dict;
+}
+
+struct dictionary_entry *dictionary_search(struct dictionary *dict, char *key)
+{
+	struct dictionary_entry *entry = dict->head;
+	while (entry != NULL) {
+		if (strcmp(key, entry->key) == 0) {
+			break;
+		}
+		entry = entry->next;
+	}
+	return entry;
+}
+
+void dictionary_add(struct dictionary *dict, char *key, char *value)
+{
+	struct dictionary_entry *entry;
+	
+	// replace key value if exists
+	entry = dictionary_search(dict, key);
+	if (entry != NULL) {
+		entry->value = value;
+		return;
+	}
+
+	// else create new entry
+	entry = calloc(1, sizeof(struct dictionary_entry));
+	entry->dict = dict;
+	entry->next = NULL;
+	entry->key = key;
+	entry->value = value;
+
+	if (dict->length == 0) {
+		dict->head = entry;
+	} else {
+		dict->tail->next = entry;
+	}
+	dict->length++;
+	dict->tail = entry;
+}
+
+void dictionary_destroy(struct dictionary *dict)
+{
+	struct dictionary_entry *entry = dict->head, *tmp = dict->head;
+	while (entry != NULL) {
+		tmp = entry->next;
+		free(entry);
+		entry = tmp;
+	}
+	free(dict);
+}
+
+struct dictionary *kv_parse(char *str)
+{
+	struct dictionary *dict = dictionary_create();
+
+	char *delim = "=&";
+	char *token = strtok(str, delim);
+	char *key, *value;
+
+	while (token) {
+		key = token;
+		token = strtok(NULL, delim);
+		value = token;
+		dictionary_add(dict, key, value);
+		token = strtok(NULL, delim);
+	}
+	return dict;
+}
+

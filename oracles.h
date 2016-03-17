@@ -1,11 +1,10 @@
-#ifndef HEADER_ORACLES_H
-#define HEADER_ORACLES_H
+#ifndef ORACLES_H
+#define ORACLES_H
 
 typedef int (*oracle_t)(unsigned char *, size_t, unsigned char *);
 
-unsigned char *get_random_key();
-unsigned char *get_random_iv();
-int get_random_length();
+unsigned char *get_static_key();
+/*int get_random_length();
 
 // This oracle uses ECB mode, appends a secret text to the input, and
 // uses a constant unknown key.
@@ -30,5 +29,5 @@ void receiver_16(unsigned char *in, size_t length);
 // The oracle returns true or false depending on the padding validity.
 size_t source_17(unsigned char *out, unsigned char *iv);
 int oracle_17(unsigned char *in, size_t length, unsigned char *iv);
-
+*/
 #endif

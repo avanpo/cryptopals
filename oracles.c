@@ -2,36 +2,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "modes.h"
 #include "oracles.h"
 #include "utils.h"
 
-unsigned char *get_random_key()
+unsigned char *get_static_key()
 {
-	static unsigned char random_key[16];
+	static unsigned char static_key[16];
 
 	static int init = 0;
 	if (!init) {
 		srand(0);
-		fill_random_bytes(random_key, 16);
+		fill_random_bytes(static_key, 16);
 		init = 1;
 	}
-	return random_key;
+	return static_key;
 }
 
-unsigned char *get_random_iv()
-{
-	static unsigned char random_iv[16];
-
-	static int init = 0;
-	if (!init) {
-		srand(1);
-		fill_random_bytes(random_iv, 16);
-		init = 1;
-	}
-	return random_iv;
-}
-
-int get_random_length()
+/*int get_random_length()
 {
 	static int length;
 
@@ -195,41 +183,4 @@ void receiver_16(unsigned char *in, size_t length)
 	free(out);
 	printf("false\n");
 	return;
-}
-
-size_t source_17(unsigned char *out, unsigned char *iv)
-{
-	char *base64[] = { "MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=",
-		"MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic=",
-		"MDAwMDAyUXVpY2sgdG8gdGhlIHBvaW50LCB0byB0aGUgcG9pbnQsIG5vIGZha2luZw==",
-		"MDAwMDAzQ29va2luZyBNQydzIGxpa2UgYSBwb3VuZCBvZiBiYWNvbg==",
-		"MDAwMDA0QnVybmluZyAnZW0sIGlmIHlvdSBhaW4ndCBxdWljayBhbmQgbmltYmxl",
-		"MDAwMDA1SSBnbyBjcmF6eSB3aGVuIEkgaGVhciBhIGN5bWJhbA==",
-		"MDAwMDA2QW5kIGEgaGlnaCBoYXQgd2l0aCBhIHNvdXBlZCB1cCB0ZW1wbw==",
-		"MDAwMDA3SSdtIG9uIGEgcm9sbCwgaXQncyB0aW1lIHRvIGdvIHNvbG8=",
-		"MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g=",
-		"MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93" };
-
-	int r = rand() % 10;
-	unsigned char bytes[76];
-	int length = base64_str_to_binary(base64[r], bytes);
-
-	memcpy(iv, get_random_iv(), 16);
-	int encrypted_length = encrypt_AES_CBC(bytes, out, length, get_random_key(),
-			get_random_iv());
-
-	return encrypted_length;
-}
-
-int oracle_17(unsigned char *in, size_t length, unsigned char *iv)
-{
-	unsigned char *out = malloc(length * sizeof(unsigned char));
-
-	int str_length = decrypt_AES_CBC(in, out, length, get_random_key(), iv);
-
-	if (str_length == 0) {
-		return 0;
-	} else {
-		return 1;
-	}
-}
+} */
