@@ -222,8 +222,73 @@ void challenge_23()
 	}
 }
 
+size_t source_24(unsigned char *ct)
+{
+	char text[] = "AAAAAAAAAAAAAA";
+	unsigned char pt[128];
+	int l = strlen(text);
+	int r = randn(100);
+
+	fill_random_bytes(pt, r);
+	memcpy(pt + r, text, l);
+
+	uint16_t seed = rand() & 0xffff;
+	MT19937_stream(pt, ct, r + l, seed);
+
+	return r + l;
+}
+
+size_t source_24b(char *pwtoken)
+{
+	struct mt *rng = init_mtrand();
+	seed_mtrand(rng, time(NULL));
+
+	unsigned char token[16];
+
+	int i, v;
+	for (i = 0; i < 16; i += 4) {
+		v = mtrand(rng);
+		memcpy(token + i, &v, 4);
+	}
+	
+	binary_to_hex_str(token, pwtoken, 16);
+	return 16;
+}
+
+void challenge_24()
+{
+	unsigned char pt[128], ct[128] = {0};
+	int length = source_24(ct);
+
+	// break 16-bit seed MT19937 stream cipher
+	printf("Given ciphertext of length %d.\n", length);
+	int i;
+	for (i = 0; i <= 0xffff; ++i) {
+		memset(pt, '\0', 128);
+		MT19937_stream(ct, pt, length, i);
+		if (pt[length - 1] == 'A' && pt[length - 2] == 'A' &&
+				pt[length - 3] == 'A') {
+			print_str("Decrypted text:");
+			print_binary(pt, length);
+		}
+	}
+
+	char pwtoken[64] = {0};
+
+	// check token source
+	length = source_24b(pwtoken);
+
+	printf("Given token %s.\n", pwtoken);
+	int result = check_token_for_MT19937_time_seed(pwtoken);
+	if (result) {
+		printf("Token seeded with time: %d\n", result);
+	} else {
+		print_str("Unable to find token source.");
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	srand(time(NULL));
-	challenge_23();
+	challenge_24();
 }

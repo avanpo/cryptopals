@@ -206,7 +206,7 @@ void fill_random_bytes(unsigned char *buffer, size_t length)
 {
 	int i;
 	for (i = 0; i < length; ++i) {
-		buffer[i] = rand() % 256;
+		buffer[i] = rand() & 0xff;
 	}
 }
 
@@ -283,4 +283,3 @@ struct dictionary *kv_parse(char *str)
 	}
 	return dict;
 }
-

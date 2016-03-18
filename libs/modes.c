@@ -4,6 +4,7 @@
 
 #include <openssl/aes.h>
 
+#include "random.h"
 #include "utils.h"
 
 size_t pkcs7_pad(unsigned char *plaintext, size_t length, int block_length)
@@ -114,15 +115,26 @@ size_t AES_CTR(unsigned char *in, unsigned char *out, size_t length, const unsig
 	memcpy(counter, nonce, 8);
 	memset(counter + 8, '\0', 8);
 	
-	int i;
+	int i, l;
 	for (i = 0; i < length; i += 16) {
 		AES_encrypt(counter, keystream, &key);
-		if (length - i < 16) {
-			fixed_xor(keystream, in + i, length - i, out + i);
-		} else {
-			fixed_xor(keystream, in + i, 16, out + i);
-		}
+		l = length - i < 16 ? length - i : 16;
+		fixed_xor(keystream, in + i, l, out + i);
 		(*((uint64_t *) (counter + 8)))++; // counter is machine endian
+	}
+	return length;
+}
+
+size_t MT19937_stream(unsigned char *in, unsigned char *out, size_t length, uint16_t seed)
+{
+	struct mt *rng = init_mtrand();
+	seed_mtrand(rng, seed);
+
+	int i, l, stream;
+	for (i = 0; i < length; i += 4) {
+		stream = mtrand(rng);
+		l = length - i < 4 ? length - i : 4;
+		fixed_xor((unsigned char *)&stream, in + i, l, out + i);
 	}
 	return length;
 }
