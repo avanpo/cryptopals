@@ -5,10 +5,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "../exploits.h"
-#include "../modes.h"
-#include "../random.h"
-#include "../utils.h"
+#include "libs/exploits.h"
+#include "libs/modes.h"
+#include "libs/random.h"
+#include "libs/utils.h"
 
 size_t source_17(unsigned char *out, unsigned char *iv)
 {
@@ -72,7 +72,7 @@ void challenge_18()
 
 void challenge_19()
 {
-	FILE *fp = fopen("19.txt", "r");
+	FILE *fp = fopen("files/19.txt", "r");
 
 	int lengths[40];
 	unsigned char ciphertexts[40][64], plain[64], nonce[8];
@@ -116,7 +116,7 @@ void challenge_19()
 
 void challenge_20()
 {
-	FILE *fp = fopen("20.txt", "r");
+	FILE *fp = fopen("files/20.txt", "r");
 
 	int lengths[60];
 	unsigned char ciphertexts[60][256], plain[256], nonce[8];
@@ -203,7 +203,7 @@ void challenge_23()
 	uint32_t state[624];
 
 	int i, l, r;
-	l = rand() % 100;
+	l = rand() % 1000;
 
 	for (i = 0; i < l; ++i) {
 		r = mtrand(rng);
@@ -224,5 +224,6 @@ void challenge_23()
 
 int main(int argc, char *argv[])
 {
+	srand(time(NULL));
 	challenge_23();
 }
