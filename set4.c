@@ -5,6 +5,7 @@
 
 #include "libs/ciphers.h"
 #include "libs/exploits.h"
+#include "libs/macs.h"
 #include "libs/utils.h"
 
 int source_25(unsigned char *ct)
@@ -131,8 +132,91 @@ void challenge_26()
 	}
 }
 
+int source_27(unsigned char *in, size_t length, unsigned char *out)
+{
+	char prepend[] = "comment1=cooking%20MCs;userdata=";
+	char append[] = ";comment2=%20like%20a%20pound%20of%20bacon";
+	int pre_length = strlen(prepend), ap_length = strlen(append);
+
+	char *encoding = malloc((pre_length + 3 * length + ap_length) * sizeof(char));
+
+	memcpy(encoding, prepend, pre_length);
+	int i, j;
+	for (i = 0, j = pre_length; i < length; ++i, ++j) {
+		if (in[i] == ';' || in[i] == '=') {
+			encoding[j++] = '"';
+			encoding[j++] = in[i];
+			encoding[j] = '"';
+		} else {
+			encoding[j] = in[i];
+		}
+	}
+	memcpy(encoding + j, append, ap_length);
+
+	int encrypted_length = encrypt_AES_CBC((unsigned char *)encoding, out,
+			j + ap_length, get_static_key(), get_static_key());
+
+	free(encoding);
+	return encrypted_length;
+}
+
+int receiver_27(unsigned char *in, size_t length, unsigned char *out)
+{
+	int str_length = decrypt_AES_CBC(in, out, length, get_static_key(), get_static_key());
+
+	int i, high_ascii = 0;
+	for (i = 0; i < str_length; ++i) {
+		if (out[i] > 0x7f) {
+			++high_ascii;
+			break;
+		}
+	}
+
+	if (!high_ascii) {
+		memset(out, 0, str_length);
+		return 0;
+	}
+	return 1;
+}
+
+void challenge_27()
+{
+	unsigned char ct[128] = {0}, pt[128] = {0};
+	int length = source_27(NULL, 0, ct);
+
+	int i;
+	for (i = 0; i < 16; ++i) {
+		ct[i + 16] = 0;
+		ct[i + 32] = ct[i];
+	}
+
+	int result = receiver_27(ct, length, pt);
+
+	unsigned char key[16] = {0};
+	if (result) {
+		fixed_xor(pt, pt + 32, 16, key);
+		if (memcmp(get_static_key(), key, 16) == 0) {
+			print_str("Key recovered.");
+		} else {
+			print_str("Key incorrect.");
+		}
+	} else {
+		print_str("No high-ASCII error received.");
+	}
+}
+
+void challenge_28()
+{
+	unsigned char message[] = "message", key[] = "key";
+	unsigned char mac[20];
+
+	sha1_keyed_mac(message, 7, key, 3, mac);
+
+	print_hex(mac, 20);
+}
+
 int main(int argc, char *argv[])
 {
 	srand(time(NULL));
-	challenge_26();
+	challenge_28();
 }
