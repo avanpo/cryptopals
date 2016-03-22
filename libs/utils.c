@@ -107,7 +107,7 @@ void print_hex(unsigned char *bin, size_t length)
 {
 	int i;
 	for (i = 0; i < length; ++i) {
-		printf("%.2x ", bin[i]);
+		printf("%.2x", bin[i]);
 	}
 	printf("\n");
 }

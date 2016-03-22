@@ -117,6 +117,7 @@ size_t AES_CTR(unsigned char *in, unsigned char *out, size_t length, const unsig
 	
 	int i, l;
 	for (i = 0; i < length; i += 16) {
+		print_binary(counter, 16);
 		AES_encrypt(counter, keystream, &key);
 		l = length - i < 16 ? length - i : 16;
 		fixed_xor(keystream, in + i, l, out + i);

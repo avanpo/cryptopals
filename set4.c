@@ -215,8 +215,43 @@ void challenge_28()
 	print_hex(mac, 20);
 }
 
+void challenge_29()
+{
+	unsigned char message[128] = "comment1=cooking%20MCs;userdata=foo;"
+		"comment2=%20like%20a%20pound%20of%20bacon";
+	unsigned char padded_message[256] = {0};
+	memcpy(padded_message, message, 128);
+	int padded_length = sha1_pad(padded_message, 77);
+	unsigned char append[16] = ";admin=true";
+	memcpy(padded_message + padded_length, append, 11);
+	padded_length += 11;
+	unsigned char mac[20], forged_mac[20], test_mac[20];
+
+	print_str("Base MAC");
+	sha1_keyed_mac(message, strlen((char *) message), (unsigned char *)get_static_word(), strlen(get_static_word()), mac);
+	print_hex(mac, 20);
+	print_str("");
+	//int i;
+	//for (i = 4; i < 16; ++i) {
+		print_str("Forged MAC");
+		sha1_length_extension(mac, 77 + strlen(get_static_word()), append, 11, forged_mac);
+		printf("Secret length %2zu: \n", strlen(get_static_word()));
+		print_hex(forged_mac, 20);
+		print_str("");
+		//print_binary(padded_message, padded_length);
+	//}
+
+	print_str("Test MAC");
+	sha1_keyed_mac(padded_message, padded_length, (unsigned char *) get_static_word(),
+			strlen(get_static_word()), test_mac);
+
+	printf("Server view (length %zu): \n", strlen(get_static_word()));
+	print_hex(test_mac, 20);
+	print_binary(padded_message, padded_length);
+}
+
 int main(int argc, char *argv[])
 {
 	srand(time(NULL));
-	challenge_28();
+	challenge_29();
 }
