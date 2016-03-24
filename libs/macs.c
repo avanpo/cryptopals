@@ -1,8 +1,9 @@
-#include <byteswap.h>
+#include <endian.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/sha.h>
+#include <openssl/md4.h>
 
 /* Calculate sha1 padding length based on message
  * length. */
@@ -29,7 +30,24 @@ int sha1_pad(unsigned char *message, int mlen, int slen)
 		message[mlen + i] = 0x00;
 	}
 	
-	uint64_t count = __bswap_64((mlen + slen) * 8);
+	uint64_t count = htobe64((mlen + slen) * 8);
+	memcpy(message + mlen + plen - 8, &count, 8);
+
+	return mlen + plen;
+}
+
+/* Padding according to RFC1186. */
+int md4_pad(unsigned char *message, int mlen, int slen)
+{
+	int plen = sha1_pad_length(slen + mlen);
+
+	message[mlen] = 0x80;
+	int i;
+	for (i = 1; i < plen - 8; ++i) {
+		message[mlen + i] = 0x00;
+	}
+	
+	uint64_t count = htole64((mlen + slen) * 8);
 	memcpy(message + mlen + plen - 8, &count, 8);
 
 	return mlen + plen;
@@ -51,4 +69,14 @@ void sha1_keyed_mac(unsigned char *message, int mlen, unsigned char *key,
 	SHA1_Update(&c, key, klen);
 	SHA1_Update(&c, message, mlen);
 	SHA1_Final(out, &c);
+}
+
+void md4_keyed_mac(unsigned char *message, int mlen, unsigned char *key,
+		int klen, unsigned char *out)
+{
+	MD4_CTX c;
+	MD4_Init(&c);
+	MD4_Update(&c, key, klen);
+	MD4_Update(&c, message, mlen);
+	MD4_Final(out, &c);
 }

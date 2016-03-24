@@ -249,6 +249,49 @@ void challenge_29()
 				(unsigned char *) get_static_word(),
 				strlen(get_static_word()), test_mac);
 		if (memcmp(forged_mac, test_mac, 20) == 0) {
+			print_hex(test_mac, 20);
+			print_binary(padded_message, plen);
+		}
+	}
+}
+
+void challenge_30()
+{
+	unsigned char message[128] = "comment1=cooking%20MCs;userdata=foo;"
+		"comment2=%20like%20a%20pound%20of%20bacon";
+	int mlen = 77, plen;
+	unsigned char padded_message[256] = {0};
+	memcpy(padded_message, message, 128);
+	unsigned char append[16] = ";admin=true";
+	int alen = 11;
+	unsigned char mac[16], forged_mac[16], test_mac[16];
+
+	print_str("Base MAC");
+	md4_keyed_mac(message, strlen((char *) message),
+			(unsigned char *) get_static_word(),
+			strlen(get_static_word()), mac);
+	print_hex(mac, 16);
+
+	print_str("\nForged MAC");
+	// Assumes secret length 8, but will be the same for any
+	// secret length that doesn't increase or decrease the
+	// number of 64 byte blocks in the hash input + padding
+	md4_length_extension(mac, mlen + 8 + sha1_pad_length(mlen + 8), append, alen, forged_mac);
+	print_hex(forged_mac, 16);
+
+	print_str("\nPlaintext verified by server: ");
+	int i;
+	for (i = 0; i < 16; ++i) {
+		plen = md4_pad(padded_message, mlen, i);
+		memcpy(padded_message + plen, append, alen);
+		plen += alen;
+		md4_keyed_mac(padded_message, plen,
+				(unsigned char *) get_static_word(),
+				strlen(get_static_word()), test_mac);
+		//print_hex(test_mac, 16);
+		//print_binary(padded_message, plen);
+		if (memcmp(forged_mac, test_mac, 16) == 0) {
+			print_hex(test_mac, 16);
 			print_binary(padded_message, plen);
 		}
 	}
@@ -257,5 +300,5 @@ void challenge_29()
 int main(int argc, char *argv[])
 {
 	srand(time(NULL));
-	challenge_29();
+	challenge_30();
 }
