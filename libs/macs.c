@@ -4,10 +4,24 @@
 #include <string.h>
 #include <openssl/sha.h>
 
-/* padding according to RFC3174 */
-int sha1_pad(unsigned char *message, int mlen)
+/* Calculate sha1 padding length based on message
+ * length. */
+int sha1_pad_length(int mlen)
 {
-	int plen = 64 - (mlen % 64);
+	int l = 64 - (mlen % 64);
+	if (l <= 9) {
+		l += 64;
+	}
+	return l;
+}
+
+/* Padding according to RFC3174.
+ *   mlen: length of the message
+ *   slen: length of any prepended secret
+ * returns: new length of message buffer */
+int sha1_pad(unsigned char *message, int mlen, int slen)
+{
+	int plen = sha1_pad_length(slen + mlen);
 
 	message[mlen] = 0x80;
 	int i;
@@ -15,7 +29,7 @@ int sha1_pad(unsigned char *message, int mlen)
 		message[mlen + i] = 0x00;
 	}
 	
-	uint64_t count = __bswap_64(mlen * 8);
+	uint64_t count = __bswap_64((mlen + slen) * 8);
 	memcpy(message + mlen + plen - 8, &count, 8);
 
 	return mlen + plen;
