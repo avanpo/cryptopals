@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <sys/time.h>
 
 #include "utils.h"
 
@@ -200,6 +202,29 @@ int randnn(int l, int h)
 		exit(1);
 	}
 	return l + rand() % (h - l);
+}
+
+void sleepms(int ms)
+{
+	struct timespec ts;
+	ts.tv_sec = ms / 1000;
+	ts.tv_nsec = (ms % 1000) * 1000000;
+	nanosleep(&ts, NULL);
+}
+
+int stopwatch()
+{
+	static struct timeval t;
+
+	struct timeval now;
+	gettimeofday(&now, NULL);
+
+	int elapsed_ms = 1000 * (now.tv_sec - t.tv_sec) + (now.tv_usec - t.tv_usec) / 1000;
+
+	t.tv_sec = now.tv_sec;
+	t.tv_usec = now.tv_usec;
+
+	return elapsed_ms;
 }
 
 void fill_random_bytes(unsigned char *buffer, size_t length)

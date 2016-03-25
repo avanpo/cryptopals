@@ -80,3 +80,38 @@ void md4_keyed_mac(unsigned char *message, int mlen, unsigned char *key,
 	MD4_Update(&c, message, mlen);
 	MD4_Final(out, &c);
 }
+
+/* NOTE: doesn't support keys larger than block size,
+ * such keys should be hashed before use */
+void sha1_hmac(unsigned char *key, int klen, unsigned char *message, int mlen,
+		unsigned char *out)
+{
+	int i;
+	unsigned char tmp[20], block[64] = {0};
+
+	SHA_CTX c1, c2;
+	SHA1_Init(&c1);
+	SHA1_Init(&c2);
+
+	for (i = 0; i < 64; ++i) {
+		block[i] = 0x36;
+		if (i < klen) {
+			block[i] ^= key[i];
+		}
+	}
+
+	SHA1_Update(&c1, block, 64);
+	SHA1_Update(&c1, message, mlen);
+	SHA1_Final(tmp, &c1);
+
+	for (i = 0; i < 64; ++i) {
+		block[i] = 0x5c;
+		if (i < klen) {
+			block[i] ^= key[i];
+		}
+	}
+
+	SHA1_Update(&c2, block, 64);
+	SHA1_Update(&c2, tmp, 20);
+	SHA1_Final(out, &c2);
+}

@@ -12,4 +12,7 @@ int sha1_keyed_mac(unsigned char *message, int mlen, unsigned char *key,
 void md4_keyed_mac(unsigned char *message, int mlen, unsigned char *key,
 		int klen, unsigned char *out);
 
+void sha1_hmac(unsigned char *key, int klen, unsigned char *message, int mlen,
+		unsigned char *out);
+
 #endif

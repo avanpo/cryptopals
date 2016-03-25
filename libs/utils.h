@@ -27,6 +27,11 @@ int randn(int n);
 int randnn(int l, int h);
 void fill_random_bytes(unsigned char *buffer, size_t length);
 
+/* misc */
+
+void sleepms(int ms);
+int stopwatch();
+
 /* dictionary implementation */
 
 struct dictionary {

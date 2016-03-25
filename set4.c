@@ -297,8 +297,55 @@ void challenge_30()
 	}
 }
 
+int insecure_compare_31(unsigned char *a, unsigned char *b, int n)
+{
+	int i;
+	for (i = 0; i < n; ++i) {
+		if (a[i] != b[i]) {
+			return b[i] - a[i];
+		}
+		sleepms(8);
+	}
+	return 0;
+}
+
+int server_31(unsigned char *file, int flen, unsigned char *signature)
+{
+	unsigned char hmac[20];
+	sha1_hmac(get_static_key(), 16, file, flen, hmac);
+
+	if (insecure_compare_31(signature, hmac, 20) == 0) {
+		return 200;
+	}
+	return 500;
+}
+
+void challenge_31()
+{
+	unsigned char file[128] = "file";
+	unsigned char vector[20] = {0};
+
+	int i, j;
+	for (i = 0; i < 20; ++i) {
+		for (j = 0; j < 256; ++j) {
+			vector[i] = j;
+			stopwatch();
+			server_31(file, 4, vector);
+			int ms = stopwatch();
+			if (ms >= 8 * (i + 1)) {
+				break;
+			}
+		}
+	}
+
+	if (server_31(file, 4, vector) == 200) {
+		print_str("Verified MAC for \"file\":");
+		print_hex(vector, 20);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	srand(time(NULL));
-	challenge_30();
+	challenge_31();
 }
