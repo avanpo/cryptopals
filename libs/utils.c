@@ -212,7 +212,7 @@ void sleepms(int ms)
 	nanosleep(&ts, NULL);
 }
 
-int stopwatch()
+int stopwatch_ms()
 {
 	static struct timeval t;
 
@@ -220,6 +220,21 @@ int stopwatch()
 	gettimeofday(&now, NULL);
 
 	int elapsed_ms = 1000 * (now.tv_sec - t.tv_sec) + (now.tv_usec - t.tv_usec) / 1000;
+
+	t.tv_sec = now.tv_sec;
+	t.tv_usec = now.tv_usec;
+
+	return elapsed_ms;
+}
+
+int stopwatch_us()
+{
+	static struct timeval t;
+
+	struct timeval now;
+	gettimeofday(&now, NULL);
+
+	int elapsed_ms = 1000000 * (now.tv_sec - t.tv_sec) + (now.tv_usec - t.tv_usec);
 
 	t.tv_sec = now.tv_sec;
 	t.tv_usec = now.tv_usec;

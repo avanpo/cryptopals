@@ -304,7 +304,7 @@ int insecure_compare_31(unsigned char *a, unsigned char *b, int n)
 		if (a[i] != b[i]) {
 			return b[i] - a[i];
 		}
-		sleepms(8);
+		sleepms(50);
 	}
 	return 0;
 }
@@ -329,10 +329,10 @@ void challenge_31()
 	for (i = 0; i < 20; ++i) {
 		for (j = 0; j < 256; ++j) {
 			vector[i] = j;
-			stopwatch();
+			stopwatch_ms();
 			server_31(file, 4, vector);
-			int ms = stopwatch();
-			if (ms >= 8 * (i + 1)) {
+			int ms = stopwatch_ms();
+			if (ms >= 50 * (i + 1)) {
 				break;
 			}
 		}
@@ -344,8 +344,69 @@ void challenge_31()
 	}
 }
 
+int insecure_compare_32(unsigned char *a, unsigned char *b, int n)
+{
+	int i;
+	for (i = 0; i < n; ++i) {
+		if (a[i] != b[i]) {
+			return b[i] - a[i];
+		}
+		sleepms(1);
+	}
+	return 0;
+}
+
+int server_32(unsigned char *file, int flen, unsigned char *signature)
+{
+	unsigned char hmac[20];
+	sha1_hmac(get_static_key(), 16, file, flen, hmac);
+
+	if (insecure_compare_32(signature, hmac, 20) == 0) {
+		return 200;
+	}
+	return 500;
+}
+
+void challenge_32()
+{
+	setbuf(stdout, NULL);
+	unsigned char file[128] = "file";
+	unsigned char vector[20] = {0};
+
+	print_str("Cracked HMAC:");
+	int i, j, k, best_time;
+	int times[256];
+	for (i = 0; i < 20; ++i) {
+		for (j = 0; j < 256; ++j) {
+			times[j] = 0;
+		}
+		for (k = 0; k < 5; ++k) {
+			for (j = 0; j < 256; ++j) {
+				vector[i] = j;
+				stopwatch_us();
+				server_32(file, 4, vector);
+				times[j] += stopwatch_us();
+			}
+		}
+		best_time = 0;
+		for (j = 0; j < 256; ++j) {
+			if (times[j] > best_time) {
+				best_time = times[j];
+				vector[i] = j;
+			}
+		}
+		printf("%02x", vector[i]);
+	}
+
+	if (server_32(file, 4, vector) == 200) {
+		print_str("\nHMAC verified as correct.");
+	} else {
+		print_str("\nHMAC incorrect.");
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	srand(time(NULL));
-	challenge_31();
+	challenge_32();
 }

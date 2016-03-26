@@ -30,7 +30,8 @@ void fill_random_bytes(unsigned char *buffer, size_t length);
 /* misc */
 
 void sleepms(int ms);
-int stopwatch();
+int stopwatch_ms();
+int stopwatch_us();
 
 /* dictionary implementation */
 
