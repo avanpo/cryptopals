@@ -1,6 +1,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <gmp.h>
+
 /* encoding */
 
 unsigned char hex_to_nibble(char hex);
@@ -14,11 +16,11 @@ size_t base64_str_to_binary(const char *base64, unsigned char *bin);
 /* operations */
 
 void fixed_xor(const unsigned char *a, const unsigned char *b, size_t length, unsigned char *out);
+int modexp(int b, int e, int m);
 
 /* scoring */
 
 int count_high_bits(unsigned char byte);
-
 double score_english(unsigned char *a, int length);
 
 /* random */
@@ -26,8 +28,9 @@ double score_english(unsigned char *a, int length);
 int randn(int n);
 int randnn(int l, int h);
 void fill_random_bytes(unsigned char *buffer, size_t length);
+gmp_randstate_t *gmp_rand();
 
-/* misc */
+/* time */
 
 void sleepms(int ms);
 int stopwatch_ms();

@@ -1,3 +1,4 @@
+#include <gmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -186,6 +187,15 @@ void fixed_xor(const unsigned char *a, const unsigned char *b, size_t length, un
 	}
 }
 
+int modexp(int b, int e, int m)
+{
+	int r = b;
+	for (; e > 1; --e) {
+		r = (b * r) % m;
+	}
+	return r;
+}
+
 int randn(int n)
 {
 	if (n < 2) {
@@ -202,6 +212,21 @@ int randnn(int l, int h)
 		exit(1);
 	}
 	return l + rand() % (h - l);
+}
+
+void fill_random_bytes(unsigned char *buffer, size_t length)
+{
+	int i;
+	for (i = 0; i < length; ++i) {
+		buffer[i] = rand() & 0xff;
+	}
+}
+
+gmp_randstate_t *gmp_rand() {
+	gmp_randstate_t *state = malloc(sizeof(gmp_randstate_t));
+	gmp_randinit_default(*state);
+	gmp_randseed_ui(*state, time(NULL));
+	return state;
 }
 
 void sleepms(int ms)
@@ -240,14 +265,6 @@ int stopwatch_us()
 	t.tv_usec = now.tv_usec;
 
 	return elapsed_ms;
-}
-
-void fill_random_bytes(unsigned char *buffer, size_t length)
-{
-	int i;
-	for (i = 0; i < length; ++i) {
-		buffer[i] = rand() & 0xff;
-	}
 }
 
 struct dictionary *dictionary_create()
