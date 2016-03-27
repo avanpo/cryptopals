@@ -24,26 +24,14 @@ void dh_params(mpz_t p, mpz_t g)
 	mpz_init_set_str(g, "2", 10);
 }
 
-void dh_serverkeyexchange(gmp_randstate_t *state, mpz_t p, mpz_t g, mpz_t a, mpz_t A)
+void dh_keyexchange(gmp_randstate_t *state, mpz_t p, mpz_t g, mpz_t a, mpz_t A)
 {
-	dh_params(p, g);
-	
 	mpz_init(a);
 	mpz_init(A);
 
 	mpz_urandomm(a, *state, p);
 
 	mpz_powm(A, g, a, p);
-}
-
-void dh_clientkeyexchange(gmp_randstate_t *state, mpz_t p, mpz_t g, mpz_t b, mpz_t B)
-{
-	mpz_init(b);
-	mpz_init(B);
-
-	mpz_urandomm(b, *state, p);
-
-	mpz_powm(B, g, b, p);
 }
 
 void dh_finished(mpz_t p, mpz_t public, mpz_t private, unsigned char *key)

@@ -29,8 +29,9 @@ void challenge_33()
 	mpz_t mp, mg, ma, mb, mA, mB;
 	unsigned char key1[16], key2[16];
 
-	dh_serverkeyexchange(state, mp, mg, ma, mA);
-	dh_clientkeyexchange(state, mp, mg, mb, mB);
+	dh_params(mp, mg);
+	dh_keyexchange(state, mp, mg, ma, mA);
+	dh_keyexchange(state, mp, mg, mb, mB);
 
 	dh_finished(mp, mB, ma, key1);
 	dh_finished(mp, mA, mb, key2);
@@ -57,13 +58,14 @@ void challenge_34()
 
 	// ServerKeyExchange:
 	// Sends generated p, g, A
-	dh_serverkeyexchange(state, p, g, a, A);
+	dh_params(p, g);
+	dh_keyexchange(state, p, g, a, A);
 
 	// MITM relays p, g, and p instead of A
 
 	// ClientKeyExchange:
 	// Send generated B
-	dh_clientkeyexchange(state, p, g, b, B);
+	dh_keyexchange(state, p, g, b, B);
 
 	// MITM relays p instead of B
 
@@ -93,9 +95,92 @@ void challenge_34()
 	ptlen = decrypt_AES_CBC(client_ct, pt, ctlen_client, mitm_key, client_iv);
 	print_str("Recovered plaintext from client message:");
 	print_binary(pt, ptlen);
+
+	dh_cleanup(p, g, a, A, b, B);
+}
+
+void challenge_35()
+{
+	gmp_randstate_t *state = gmp_rand();
+	mpz_t p, g, a, A, b, B;
+	unsigned char server_key[16], client_key[16];
+	unsigned char server_ct[256] = {0}, client_ct[256] = {0};
+	unsigned char server_iv[16], client_iv[16];
+	unsigned char message[128] = "this is a message of 30 bytes.";
+	int mlen = 30, ctlen_server, ptlen;
+	fill_random_bytes(server_iv, 16);
+	fill_random_bytes(client_iv, 16);
+
+	// Negotiate group (server):
+	// Send p, g
+	dh_params(p, g);
+
+	// MITM replaces g
+	mpz_t g_client;
+	//mpz_init_set_ui(g_client, 1);
+	//mpz_init_set(g_client, p);
+	mpz_init(g_client);
+	mpz_sub_ui(g_client, p, 1);
+
+	// Negotiate group (client):
+	// Send ACK
+
+	// ServerKeyExchange:
+	// Sends generated A
+	dh_keyexchange(state, p, g, a, A);
+
+	// MITM relays as is
+
+	// ClientKeyExchange:
+	// Send generated B
+	dh_keyexchange(state, p, g_client, b, B);
+
+	// MITM relays as is
+
+	// Finished (server):
+	// Received p from client, sends iv + encrypted message
+	dh_finished(p, B, a, server_key);
+	ctlen_server = encrypt_AES_CBC(message, server_ct, mlen, server_key, server_iv);
+
+	// MITM relays as is
+
+	// Finished (client):
+	// Received p from server, sends iv + encrypted message
+	dh_finished(p, A, b, client_key);
+	encrypt_AES_CBC(message, client_ct, mlen, client_key, client_iv);
+
+	// MITM relays as is
+
+	// For g = 1:
+	//   Server key should now be kdf(1), since
+	//   B^a = (1^b)^a = 1
+	//   Client key unknown if A cannot be modified
+	// For g = p:
+	//   Server key should now be kdf(0), since
+	//   B^a = 0^a = 0
+	//   Client key unknown if A cannot be modified
+	// For g = p - 1:
+	//   Server key should now be kdf(1) 75% of the time,
+	//     and kdf(p-1) 25% of the time, since
+	//   B^a = ((p-1)^b)^a mod p = 1     if a*b even
+	//                           = p - 1 if a*b odd
+	//   Client key unknown if A cannot be modified
+	unsigned char mitm_key[16];
+	unsigned char pt[256] = {0};
+	dh_kdf_from_ui(1, mitm_key);
+	ptlen = decrypt_AES_CBC(server_ct, pt, ctlen_server, mitm_key, server_iv);
+	if (ptlen == 0) {
+		dh_kdf(g_client, mitm_key);
+		ptlen = decrypt_AES_CBC(server_ct, pt, ctlen_server, mitm_key, server_iv);
+	}
+	print_str("Recovered plaintext from server message:");
+	print_binary(pt, ptlen);
+
+	dh_cleanup(p, g, a, A, b, B);
+	mpz_clear(g_client);
 }
 
 int main(int argc, char *argv[])
 {
-	challenge_34();
+	challenge_35();
 }
