@@ -1,5 +1,10 @@
 #include <gmp.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "macs.h"
+#include "pk.h"
+#include "utils.h"
 
 void dh_params(mpz_t p, mpz_t g)
 {
@@ -41,9 +46,45 @@ void dh_clientkeyexchange(gmp_randstate_t *state, mpz_t p, mpz_t g, mpz_t b, mpz
 	mpz_powm(B, g, b, p);
 }
 
-void dh_finished(mpz_t p, mpz_t public, mpz_t private, mpz_t s)
+void dh_finished(mpz_t p, mpz_t public, mpz_t private, unsigned char *key)
 {
+	mpz_t s;
 	mpz_init(s);
 
 	mpz_powm(s, public, private, p);
+
+	dh_kdf(s, key);
+
+	mpz_clear(s);
+}
+
+void dh_kdf(mpz_t s, unsigned char *key)
+{
+	size_t countp;
+	unsigned char *rop = mpz_export(NULL, &countp, 1, 1, 1, 0, s);
+
+	unsigned char hash[20];
+	sha1(rop, countp, hash);
+	memcpy(key, hash, 16);
+
+	free(rop);
+}
+
+void dh_kdf_from_ui(unsigned int s, unsigned char *key)
+{
+	mpz_t s_internal;
+	mpz_init_set_ui(s_internal, s);
+	
+	dh_kdf(s_internal, key);
+	mpz_clear(s_internal);
+}
+
+void dh_cleanup(mpz_t p, mpz_t g, mpz_t a, mpz_t A, mpz_t b, mpz_t B)
+{
+	mpz_clear(p);
+	mpz_clear(g);
+	mpz_clear(a);
+	mpz_clear(A);
+	mpz_clear(b);
+	mpz_clear(B);
 }

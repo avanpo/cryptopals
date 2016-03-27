@@ -142,7 +142,7 @@ void print_dictionary(struct dictionary *dict)
 	}
 }
 
-void print(int val)
+void printi(int val)
 {
 	printf("%d\n", val);
 }

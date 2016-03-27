@@ -64,6 +64,6 @@ void print_hex(unsigned char *bin, size_t length);
 void print_ascii(unsigned char *bin, size_t length);
 void print_str(char *str);
 void print_dictionary(struct dictionary *dict);
-void print(int val);
+void printi(int val);
 
 #endif
