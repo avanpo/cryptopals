@@ -6,6 +6,7 @@
 
 #include "libs/ciphers.h"
 #include "libs/pk.h"
+#include "libs/macs.h"
 #include "libs/utils.h"
 
 void challenge_33()
@@ -223,7 +224,60 @@ void challenge_36()
 	srp_cleanup(state, N, g, k, v, a, A, b, B);
 }
 
+void challenge_37()
+{
+	gmp_randstate_t *state = gmp_rand();
+
+	unsigned char salt[16];
+	char password[] = "hunter2";
+	size_t slen = 16, plen = 7;
+
+	// Agree on N, g, k, I (email), P (password).
+	mpz_t N, g, k;
+	srp_params(N, g, k);
+
+	// Server initialization. Generates M (salt), v.
+	mpz_t v;
+	srp_init_server(N, g, salt, slen, password, plen, v);
+
+	// Client sends I, A = 0, N, 2*N, etc. This ensures K
+	// can be calculated without knowing the password.
+	mpz_t a, A;
+	//mpz_init_set_ui(A, 0);
+	mpz_init_set(A, N);
+	mpz_mul_ui(A, A, 2);
+
+	// Server sends M, B = kv + g^b mod N.
+	mpz_t b, B;
+	srp_server_send(state, N, g, k, v, b, B);
+
+	// Client calculates HMAC-SHA256(K, M), using knowledge
+	// that A = 0, N, etc. Therefore, S = 0.
+	unsigned char K[32];
+	unsigned char client_hmac[32];
+	mpz_init_set_ui(a, 0);
+	size_t countp;
+	unsigned char *rop = mpz_export(NULL, &countp, 1, 1, 1, 0, a);
+	sha256(rop, countp, K);
+	sha256_hmac(K, 32, salt, 16, client_hmac);
+
+	// Server finishes, calculates the same. For K, it
+	// uses K = SHA256((A * v^u)^b % N).
+	unsigned char server_hmac[32];
+	srp_server_finish(salt, slen, N, v, b, A, B, server_hmac);
+	
+	// Verify.
+	printf("Client:\n");
+	print_hex(client_hmac, 32);
+	printf("Server:\n");
+	print_hex(server_hmac, 32);
+
+	srp_cleanup(state, N, g, k, v, a, A, b, B);
+}
+
 int main(int argc, char *argv[])
 {
-	challenge_36();
+	srand(time(NULL));
+
+	challenge_37();
 }
