@@ -41,7 +41,7 @@ void challenge_33()
 		print_hex(key1, 16);
 	}
 
-	dh_cleanup(mp, mg, ma, mA, mb, mB);
+	dh_cleanup(state, mp, mg, ma, mA, mb, mB);
 }
 
 void challenge_34()
@@ -96,7 +96,7 @@ void challenge_34()
 	print_str("Recovered plaintext from client message:");
 	print_binary(pt, ptlen);
 
-	dh_cleanup(p, g, a, A, b, B);
+	dh_cleanup(state, p, g, a, A, b, B);
 }
 
 void challenge_35()
@@ -176,11 +176,54 @@ void challenge_35()
 	print_str("Recovered plaintext from server message:");
 	print_binary(pt, ptlen);
 
-	dh_cleanup(p, g, a, A, b, B);
+	dh_cleanup(state, p, g, a, A, b, B);
 	mpz_clear(g_client);
+}
+
+void challenge_36()
+{
+	gmp_randstate_t *state = gmp_rand();
+
+	unsigned char salt[16];
+	char password[] = "hunter2";
+	size_t slen = 16, plen = 7;
+
+	// Agree on N, g, k, I (email), P (password).
+	mpz_t N, g, k;
+	srp_params(N, g, k);
+
+	// Server initialization. Generates M (salt), v.
+	mpz_t v;
+	srp_init_server(N, g, salt, slen, password, plen, v);
+
+	// Client sends I, A = g^a mod N.
+	mpz_t a, A;
+	srp_client_send(state, N, g, a, A);
+
+	// Server sends M, B = kv + g^b mod N.
+	mpz_t b, B;
+	srp_server_send(state, N, g, k, v, b, B);
+
+	// Client finishes, calculates HMAC-SHA256(K, M),
+	// where K = SHA256((B - k * g^x)^(a + u * x) % N).
+	unsigned char client_hmac[32];
+	srp_client_finish(salt, slen, password, plen, N, g, k, a, A, B, client_hmac);
+
+	// Server finishes, calculates the same. For K, it
+	// uses K = SHA256((A * v^u)^b % N).
+	unsigned char server_hmac[32];
+	srp_server_finish(salt, slen, N, v, b, A, B, server_hmac);
+	
+	// Verify.
+	printf("Client:\n");
+	print_hex(client_hmac, 32);
+	printf("Server:\n");
+	print_hex(server_hmac, 32);
+
+	srp_cleanup(state, N, g, k, v, a, A, b, B);
 }
 
 int main(int argc, char *argv[])
 {
-	challenge_35();
+	challenge_36();
 }

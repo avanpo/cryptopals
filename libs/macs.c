@@ -53,12 +53,20 @@ int md4_pad(unsigned char *message, int mlen, int slen)
 	return mlen + plen;
 }
 
-void sha1(unsigned char *message, int mlen, unsigned char *out)
+void sha1(const unsigned char *message, int mlen, unsigned char *out)
 {
 	SHA_CTX c;
 	SHA1_Init(&c);
 	SHA1_Update(&c, message, mlen);
 	SHA1_Final(out, &c);
+}
+
+void sha256(const unsigned char *message, int mlen, unsigned char *out)
+{
+	SHA256_CTX c;
+	SHA256_Init(&c);
+	SHA256_Update(&c, message, mlen);
+	SHA256_Final(out, &c);
 }
 
 void sha1_keyed_mac(unsigned char *message, int mlen, unsigned char *key,
@@ -114,4 +122,39 @@ void sha1_hmac(unsigned char *key, int klen, unsigned char *message, int mlen,
 	SHA1_Update(&c2, block, 64);
 	SHA1_Update(&c2, tmp, 20);
 	SHA1_Final(out, &c2);
+}
+
+/* NOTE: doesn't support keys larger than block size,
+ * such keys should be hashed before use */
+void sha256_hmac(unsigned char *key, int klen, unsigned char *message, int mlen,
+		unsigned char *out)
+{
+	int i;
+	unsigned char tmp[32], block[64] = {0};
+
+	SHA256_CTX c1, c2;
+	SHA256_Init(&c1);
+	SHA256_Init(&c2);
+
+	for (i = 0; i < 64; ++i) {
+		block[i] = 0x36;
+		if (i < klen) {
+			block[i] ^= key[i];
+		}
+	}
+
+	SHA256_Update(&c1, block, 64);
+	SHA256_Update(&c1, message, mlen);
+	SHA256_Final(tmp, &c1);
+
+	for (i = 0; i < 64; ++i) {
+		block[i] = 0x5c;
+		if (i < klen) {
+			block[i] ^= key[i];
+		}
+	}
+
+	SHA256_Update(&c2, block, 64);
+	SHA256_Update(&c2, tmp, 32);
+	SHA256_Final(out, &c2);
 }
