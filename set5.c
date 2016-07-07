@@ -205,15 +205,19 @@ void challenge_36()
 	mpz_t b, B;
 	srp_server_send(state, N, g, k, v, b, B);
 
+	// Both calculate u.
+	mpz_t u;
+	srp_compute_u(A, B, u);
+
 	// Client finishes, calculates HMAC-SHA256(K, M),
 	// where K = SHA256((B - k * g^x)^(a + u * x) % N).
 	unsigned char client_hmac[32];
-	srp_client_finish(salt, slen, password, plen, N, g, k, a, A, B, client_hmac);
+	srp_client_finish(salt, slen, password, plen, N, g, k, a, B, u, client_hmac);
 
 	// Server finishes, calculates the same. For K, it
 	// uses K = SHA256((A * v^u)^b % N).
 	unsigned char server_hmac[32];
-	srp_server_finish(salt, slen, N, v, b, A, B, server_hmac);
+	srp_server_finish(salt, slen, N, v, b, A, u, server_hmac);
 	
 	// Verify.
 	printf("Client:\n");
@@ -221,7 +225,7 @@ void challenge_36()
 	printf("Server:\n");
 	print_hex(server_hmac, 32);
 
-	srp_cleanup(state, N, g, k, v, a, A, b, B);
+	srp_cleanup(state, N, g, k, v, a, A, b, B, u);
 }
 
 void challenge_37()
@@ -251,6 +255,10 @@ void challenge_37()
 	mpz_t b, B;
 	srp_server_send(state, N, g, k, v, b, B);
 
+	// Both calculate u.
+	mpz_t u;
+	srp_compute_u(A, B, u);
+
 	// Client calculates HMAC-SHA256(K, M), using knowledge
 	// that A = 0, N, etc. Therefore, S = 0.
 	unsigned char K[32];
@@ -264,7 +272,7 @@ void challenge_37()
 	// Server finishes, calculates the same. For K, it
 	// uses K = SHA256((A * v^u)^b % N).
 	unsigned char server_hmac[32];
-	srp_server_finish(salt, slen, N, v, b, A, B, server_hmac);
+	srp_server_finish(salt, slen, N, v, b, A, u, server_hmac);
 	
 	// Verify.
 	printf("Client:\n");
@@ -272,12 +280,53 @@ void challenge_37()
 	printf("Server:\n");
 	print_hex(server_hmac, 32);
 
-	srp_cleanup(state, N, g, k, v, a, A, b, B);
+	srp_cleanup(state, N, g, k, v, a, A, b, B, u);
+}
+
+void challenge_38()
+{
+	gmp_randstate_t *state = gmp_rand();
+
+	unsigned char salt[16];
+	char password[] = "hunter2";
+	size_t slen = 16, plen = 7;
+
+	// Agree on N, g, k, I (email), P (password).
+	mpz_t N, g, k;
+	srp_params(N, g, k);
+
+	// Server initialization. Generates M (salt), v.
+	mpz_t v;
+	srp_init_server(N, g, salt, slen, password, plen, v);
+
+	// Client sends I, A = g^a mod N.
+	mpz_t a, A;
+	srp_client_send(state, N, g, a, A);
+
+	// Server sends M, B = g^b mod N, u (random 128 bit num).
+	mpz_t b, B, u;
+	srp_server_send_simple(state, N, g, b, B, u);
+
+	// Client finishes, calculates HMAC-SHA256(K, M),
+	// where K = SHA256(B^(a + u * x) % N).
+	unsigned char client_hmac[32];
+	srp_client_finish_simple(salt, slen, password, plen, N, g, a, B, u, client_hmac);
+
+	// Server finishes, calculates the same. For K, it
+	// uses K = SHA256((A * v^u)^b % N).
+	unsigned char server_hmac[32];
+	srp_server_finish(salt, slen, N, v, b, A, u, server_hmac);
+
+	// Verify.
+	printf("Client:\n");
+	print_hex(client_hmac, 32);
+	printf("Server:\n");
+	print_hex(server_hmac, 32);
 }
 
 int main(int argc, char *argv[])
 {
 	srand(time(NULL));
 
-	challenge_37();
+	challenge_38();
 }

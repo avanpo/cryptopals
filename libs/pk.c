@@ -143,6 +143,22 @@ void srp_server_send(gmp_randstate_t *state, mpz_t N, mpz_t g, mpz_t k, mpz_t v,
 	mpz_clear(kv);
 }
 
+void srp_server_send_simple(gmp_randstate_t *state, mpz_t N, mpz_t g, mpz_t b, mpz_t B, mpz_t u)
+{
+	mpz_init(b);
+	mpz_init(B);
+
+	mpz_urandomm(b, *state, N);
+	mpz_powm(B, g, b, N);
+	
+	unsigned char uB[16];
+	char uH[33];
+	fill_random_bytes(uB, 16);
+	binary_to_hex_str(uB, uH, 16);
+
+	mpz_init_set_str(u, uH, 16);
+}
+
 void srp_compute_u(mpz_t A, mpz_t B, mpz_t u)
 {
 	size_t countpA, countpB;
@@ -165,11 +181,8 @@ void srp_compute_u(mpz_t A, mpz_t B, mpz_t u)
 	memset(uH, 0, 65);
 }
 
-void srp_client_finish(unsigned char *salt, size_t slen, char *password, size_t plen, mpz_t N, mpz_t g, mpz_t k, mpz_t a, mpz_t A, mpz_t B, unsigned char *hmac)
+void srp_client_finish(unsigned char *salt, size_t slen, char *password, size_t plen, mpz_t N, mpz_t g, mpz_t k, mpz_t a, mpz_t B, mpz_t u, unsigned char *hmac)
 {
-	mpz_t u;
-	srp_compute_u(A, B, u);
-
 	unsigned char *buffer = malloc(slen + plen);
 	unsigned char hash[32];
 	char xH[65];
@@ -204,7 +217,6 @@ void srp_client_finish(unsigned char *salt, size_t slen, char *password, size_t 
 
 	sha256_hmac(K, 32, salt, slen, hmac);
 
-	mpz_clear(u);
 	mpz_clear(x);
 	mpz_clear(S);
 	mpz_clear(aux);
@@ -215,11 +227,45 @@ void srp_client_finish(unsigned char *salt, size_t slen, char *password, size_t 
 	free(rop);
 }
 
-void srp_server_finish(unsigned char *salt, size_t slen, mpz_t N, mpz_t v, mpz_t b, mpz_t A, mpz_t B, unsigned char *hmac)
+void srp_client_finish_simple(unsigned char *salt, size_t slen, char *password, size_t plen, mpz_t N, mpz_t g, mpz_t a, mpz_t B, mpz_t u, unsigned char *hmac)
 {
-	mpz_t u;
-	srp_compute_u(A, B, u);
+	unsigned char *buffer = malloc(slen + plen);
+	unsigned char hash[32];
+	char xH[65];
+	memcpy(buffer, salt, slen);
+	memcpy(buffer + slen, password, plen);
+	sha256(buffer, slen + plen, hash);
+	binary_to_hex_str(hash, xH, 32);
 
+	mpz_t x;
+	mpz_init_set_str(x, xH, 16);
+
+	mpz_t S;
+	mpz_init(S);
+
+	mpz_mul(S, u, x);
+	mpz_add(S, S, a);
+	mpz_powm(S, B, S, N);
+
+	size_t countp;
+	unsigned char *rop = mpz_export(NULL, &countp, 1, 1, 1, 0, S);
+
+	unsigned char K[32];
+	sha256(rop, countp, K);
+
+	sha256_hmac(K, 32, salt, slen, hmac);
+
+	mpz_clear(x);
+	mpz_clear(S);
+	memset(hash, 0, 32);
+	memset(xH, 0, 65);
+	memset(K, 0, 32);
+	free(buffer);
+	free(rop);
+}
+
+void srp_server_finish(unsigned char *salt, size_t slen, mpz_t N, mpz_t v, mpz_t b, mpz_t A, mpz_t u, unsigned char *hmac)
+{
 	mpz_t S;
 	mpz_init(S);
 
@@ -235,13 +281,12 @@ void srp_server_finish(unsigned char *salt, size_t slen, mpz_t N, mpz_t v, mpz_t
 
 	sha256_hmac(K, 32, salt, slen, hmac);
 
-	mpz_clear(u);
 	mpz_clear(S);
 	memset(K, 0, 32);
 	free(rop);
 }
 
-void srp_cleanup(gmp_randstate_t *state, mpz_t N, mpz_t g, mpz_t k, mpz_t v, mpz_t a, mpz_t A, mpz_t b, mpz_t B)
+void srp_cleanup(gmp_randstate_t *state, mpz_t N, mpz_t g, mpz_t k, mpz_t v, mpz_t a, mpz_t A, mpz_t b, mpz_t B, mpz_t u)
 {
 	gmp_randclear(*state);
 	free(state);
@@ -253,4 +298,5 @@ void srp_cleanup(gmp_randstate_t *state, mpz_t N, mpz_t g, mpz_t k, mpz_t v, mpz
 	mpz_clear(A);
 	mpz_clear(b);
 	mpz_clear(B);
+	mpz_clear(u);
 }
