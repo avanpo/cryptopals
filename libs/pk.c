@@ -300,3 +300,43 @@ void srp_cleanup(gmp_randstate_t *state, mpz_t N, mpz_t g, mpz_t k, mpz_t v, mpz
 	mpz_clear(B);
 	mpz_clear(u);
 }
+
+void rsa_keygen(char *p_str, char *q_str, mpz_t n, mpz_t e, mpz_t d)
+{
+	mpz_t p, q, et;
+	mpz_init_set_str(p, p_str, 16);
+	mpz_init_set_str(q, q_str, 16);
+	mpz_init(et);
+
+	mpz_init(n);
+	mpz_init(e);
+	mpz_init(d);
+
+	mpz_mul(n, p, q);
+
+	mpz_sub_ui(p, p, 1);
+	mpz_sub_ui(q, q, 1);
+	mpz_mul(et, p, q);
+
+	mpz_set_ui(e, 3);
+	mpz_invert(d, e, et);
+
+	mpz_clear(p);
+	mpz_clear(q);
+	mpz_clear(et);
+}
+
+void rsa_encrypt(unsigned char *m_bin, size_t m_len, unsigned char *c_bin, size_t c_len, mpz_t n, mpz_t e)
+{
+	mpz_t m, c;
+	char *m_hex = calloc(2 * m_len, sizeof(char));
+	binary_to_hex_str(m_bin, m_hex, m_len);
+	mpz_init_set_str(m, m_hex, 16);
+	
+	mpz_init(c);
+	mpz_powm(c, m, e, n);
+}
+
+void rsa_decrypt(char *m_str, char *c_str, mpz_t n, mpz_t d)
+{
+}
