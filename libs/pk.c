@@ -290,15 +290,15 @@ void srp_cleanup(gmp_randstate_t *state, mpz_t N, mpz_t g, mpz_t k, mpz_t v, mpz
 {
 	gmp_randclear(*state);
 	free(state);
-	mpz_clear(N);
-	mpz_clear(g);
-	mpz_clear(k);
-	mpz_clear(v);
-	mpz_clear(a);
-	mpz_clear(A);
-	mpz_clear(b);
-	mpz_clear(B);
-	mpz_clear(u);
+	if (N != NULL) mpz_clear(N);
+	if (g != NULL) mpz_clear(g);
+	if (k != NULL) mpz_clear(k);
+	if (v != NULL) mpz_clear(v);
+	if (a != NULL) mpz_clear(a);
+	if (A != NULL) mpz_clear(A);
+	if (b != NULL) mpz_clear(b);
+	if (B != NULL) mpz_clear(B);
+	if (u != NULL) mpz_clear(u);
 }
 
 void rsa_keygen(char *p_str, char *q_str, mpz_t n, mpz_t e, mpz_t d)

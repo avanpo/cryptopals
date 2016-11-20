@@ -295,15 +295,16 @@ void challenge_38()
 	mpz_t N, g, k;
 	srp_params(N, g, k);
 
-	// Server initialization. Generates M (salt), v.
-	mpz_t v;
-	srp_init_server(N, g, salt, slen, password, plen, v);
+	// MITM Server initialization.
+	// Do not know the password, so cannot generate v.
+	slen = 0;
 
 	// Client sends I, A = g^a mod N.
 	mpz_t a, A;
 	srp_client_send(state, N, g, a, A);
 
-	// Server sends M, B = g^b mod N, u (random 128 bit num).
+	// MITM Server sends M, B = g^b mod N,
+	// u (random 128 bit num). Doesn't really matter.
 	mpz_t b, B, u;
 	srp_server_send_simple(state, N, g, b, B, u);
 
@@ -312,16 +313,32 @@ void challenge_38()
 	unsigned char client_hmac[32];
 	srp_client_finish_simple(salt, slen, password, plen, N, g, a, B, u, client_hmac);
 
-	// Server finishes, calculates the same. For K, it
-	// uses K = SHA256((A * v^u)^b % N).
-	unsigned char server_hmac[32];
-	srp_server_finish(salt, slen, N, v, b, A, u, server_hmac);
+	// MITM posing as server performs a dictionary
+	// attack on client's password.
+	char *dict[8];
+	dict[0] = "a";
+	dict[1] = "dictionary";
+	dict[2] = "attack";
+	dict[3] = "on";
+	dict[4] = "hunter2";
+	dict[5] = "and";
+	dict[6] = "possibly";
+	dict[7] = "others";
+	
+	int i;
+	for (i = 0; i < 8; ++i) {
+		unsigned char server_hmac[32];
+		mpz_t v;
+		srp_init_server(N, g, salt, slen, dict[i], strlen(dict[i]), v);
+		srp_server_finish(salt, slen, N, v, b, A, u, server_hmac);
+		mpz_clear(v);
+		if (memcmp(client_hmac, server_hmac, 32) == 0) {
+			printf("Found valid password:\n%s\n", dict[i]);
+		}
+	}
+	printf("\nDictionary search ended.\n");
 
-	// Verify.
-	printf("Client:\n");
-	print_hex(client_hmac, 32);
-	printf("Server:\n");
-	print_hex(server_hmac, 32);
+	srp_cleanup(state, N, g, k, NULL, a, A, b, B, u);
 }
 
 int main(int argc, char *argv[])
