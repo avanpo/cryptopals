@@ -304,6 +304,7 @@ void srp_cleanup(gmp_randstate_t *state, mpz_t N, mpz_t g, mpz_t k, mpz_t v, mpz
 void rsa_keygen(char *p_str, char *q_str, mpz_t n, mpz_t e, mpz_t d)
 {
 	mpz_t p, q, et;
+
 	mpz_init_set_str(p, p_str, 16);
 	mpz_init_set_str(q, q_str, 16);
 	mpz_init(et);
@@ -329,14 +330,33 @@ void rsa_keygen(char *p_str, char *q_str, mpz_t n, mpz_t e, mpz_t d)
 void rsa_encrypt(unsigned char *m_bin, size_t m_len, unsigned char *c_bin, size_t c_len, mpz_t n, mpz_t e)
 {
 	mpz_t m, c;
-	char *m_hex = calloc(2 * m_len, sizeof(char));
-	binary_to_hex_str(m_bin, m_hex, m_len);
-	mpz_init_set_str(m, m_hex, 16);
-	
+
+	mpz_init(m);
 	mpz_init(c);
+
+	mpz_import(m, m_len, 1, 1, 1, 0, m_bin);
+	
 	mpz_powm(c, m, e, n);
+
+	mpz_export(c_bin, &c_len, 1, 1, 1, 0, c);
+
+	mpz_clear(m);
+	mpz_clear(c);
 }
 
-void rsa_decrypt(char *m_str, char *c_str, mpz_t n, mpz_t d)
+void rsa_decrypt(unsigned char *c_bin, size_t c_len, unsigned char *m_bin, size_t m_len, mpz_t n, mpz_t d)
 {
+	mpz_t m, c;
+
+	mpz_init(m);
+	mpz_init(c);
+
+	mpz_import(c, c_len, 1, 1, 1, 0, c_bin);
+
+	mpz_powm(m, c, d, n);
+
+	mpz_export(m_bin, &m_len, 1, 1, 1, 0, m);
+
+	mpz_clear(m);
+	mpz_clear(c);
 }

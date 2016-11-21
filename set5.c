@@ -341,9 +341,38 @@ void challenge_38()
 	srp_cleanup(state, N, g, k, NULL, a, A, b, B, u);
 }
 
+void challenge_39()
+{
+	mpz_t n, e, d;
+	char *p_str = "38b689c351cf329d5efd5676b";
+	char *q_str = "54060a750a88d007bd41db2cb";
+
+	rsa_keygen(p_str, q_str, n, e, d);
+
+	size_t pt_len = 32, ct_len = 0;
+	unsigned char pt[200] = "yellow submarineyellow submarine";
+	unsigned char ct[200] = {0};
+
+	mpz_out_str(stdout, 16, n);
+	printf("\n");
+	mpz_out_str(stdout, 16, e);
+	printf("\n");
+	mpz_out_str(stdout, 16, d);
+	printf("\n");
+
+	rsa_encrypt(pt, pt_len, ct, ct_len, n, e);
+
+	memset(pt, 0, 32);
+
+	rsa_decrypt(ct, ct_len, pt, pt_len, n, d);
+
+	printf("Plaintext length: %ld\n", pt_len);
+	print_binary(pt, pt_len);
+}
+
 int main(int argc, char *argv[])
 {
 	srand(time(NULL));
 
-	challenge_38();
+	challenge_39();
 }
